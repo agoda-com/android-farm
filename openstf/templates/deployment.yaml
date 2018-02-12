@@ -1,0 +1,445 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-api
+spec:
+  replicas: {{ .Values.stf.api.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-api
+    spec:
+      containers:
+      - name: api
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - api
+        - --secret
+        - "nosecret"
+        - --port
+        - "3000"
+        - --connect-sub
+        - "tcp://{{ template "fullname" . }}-triproxy-app:7150"
+        - --connect-push
+        - "tcp://{{ template "fullname" . }}-triproxy-app:7170"
+        env:
+        - name: RETHINKDB_PORT_28015_TCP
+          value: "tcp://{{.Values.db.url}}:{{.Values.db.port}}"
+        - name: RETHINKDB_ENV_AUTHKEY
+          value: "{{.Values.db.password}}"
+        ports:
+        - containerPort: 3000
+        resources:
+{{ toYaml .Values.stf.api.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-app
+spec:
+  replicas: {{ .Values.stf.app.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-app
+    spec:
+      containers:
+      - name: app
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - "app"
+        - --secret
+        - "nosecret"
+        - --port
+        - "3000"
+        -  --auth-url
+        - "https://{{ .Values.ingress.hostname }}/auth/mock/"
+        - --websocket-url
+        - "https://{{ .Values.ingress.hostname }}/"
+        env:
+        - name: RETHINKDB_PORT_28015_TCP
+          value: "tcp://{{.Values.db.url}}:{{.Values.db.port}}"
+        - name: RETHINKDB_ENV_AUTHKEY
+          value: "{{.Values.db.password}}"
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        ports:
+        - containerPort: 3000
+          name: bind-port
+        resources:
+{{ toYaml .Values.stf.api.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-auth
+spec:
+  replicas: {{ .Values.stf.auth.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-auth
+    spec:
+      containers:
+      - name: auth
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - auth-mock
+        - --secret
+        - "nosecret"
+        - --port
+        - "3000"
+        - --app-url
+        - "https://{{ .Values.ingress.hostname }}/"
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.auth.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-processor
+spec:
+  replicas: {{ .Values.stf.processor.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-processor
+    spec:
+      containers:
+      - name: processor
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - processor
+        - "stf-processor"
+        - --connect-app-dealer
+        - "tcp://{{ template "fullname" . }}-triproxy-app:7160"
+        - --connect-dev-dealer
+        - "tcp://{{ template "fullname" . }}-triproxy-dev:7260"
+        env:
+        - name: RETHINKDB_PORT_28015_TCP
+          value: "tcp://{{.Values.db.url}}:{{.Values.db.port}}"
+        - name: RETHINKDB_ENV_AUTHKEY
+          value: "{{.Values.db.password}}"
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.processor.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-reaper
+spec:
+  replicas: {{ .Values.stf.reaper.replicas}}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-reaper
+    spec:
+      containers:
+      - name: reaper
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - reaper
+        - "dev"
+        - --connect-push
+        - "tcp://{{ template "fullname" . }}-triproxy-dev:7270"
+        - --connect-sub
+        - "tcp://{{ template "fullname" . }}-triproxy-app:7150"
+        - --heartbeat-timeout
+        -  "30000"
+        env:
+        - name: RETHINKDB_PORT_28015_TCP
+          value: "tcp://{{.Values.db.url}}:{{.Values.db.port}}"
+        - name: RETHINKDB_ENV_AUTHKEY
+          value: "{{.Values.db.password}}"
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.reaper.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-apk-storage
+spec:
+  replicas: {{ .Values.stf.apkStorage.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-apk-storage
+    spec:
+      containers:
+      - name: apk-storage
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - storage-plugin-apk
+        - --port
+        - "3000"
+        - --storage-url
+        - "https://{{ .Values.ingress.hostname }}/"
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.apkStorage.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-img-storage
+spec:
+  replicas: {{ .Values.stf.imgStorage.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-img-storage
+    spec:
+      containers:
+      - name: img-storage
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - storage-plugin-image
+        - --port
+        - "3000"
+        - --storage-url
+        - "https://{{ .Values.ingress.hostname }}/"
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.imgStorage.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-storage
+spec:
+  replicas: {{ .Values.stf.storage.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-storage
+    spec:
+      containers:
+      - name: storage
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - storage-temp
+        - --port
+        - "3000"
+        - --save-dir
+        - "/data"
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - mountPath: /data
+          name: storage
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.storage.resources | indent 10 }}
+      volumes:
+      - name: storage
+        emptyDir: {}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-triproxy-dev
+spec:
+  replicas: {{ .Values.stf.triproxyDev.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-triproxy-dev
+    spec:
+      containers:
+      - name: triproxy-dev
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - triproxy
+        - "dev"
+        - --bind-pub
+        - "tcp://*:7250"
+        - --bind-dealer
+        - "tcp://*:7260"
+        - --bind-pull
+        - "tcp://*:7270"
+        ports:
+        - containerPort: 7250
+          name: bind-pub
+        - containerPort: 7260
+          name: bind-dealer
+        - containerPort: 7270
+          name: bind-pull
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.triproxyDev.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-triproxy-app
+spec:
+  replicas: {{ .Values.stf.triproxyApp.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-triproxy-app
+    spec:
+      containers:
+      - name: triproxy-app
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - triproxy
+        - "app"
+        - --bind-pub
+        - "tcp://*:7150"
+        - --bind-dealer
+        - "tcp://*:7160"
+        - --bind-pull
+        - "tcp://*:7170"
+        ports:
+        - containerPort: 7150
+          name: bind-pub
+        - containerPort: 7160
+          name: bind-dealer
+        - containerPort: 7170
+          name: bind-pull
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        resources:
+{{ toYaml .Values.stf.triproxyApp.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-websocket
+spec:
+  replicas: {{ .Values.stf.websocket.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-websocket
+    spec:
+      containers:
+      - name: websocket
+        image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+        imagePullPolicy: {{ .Values.stf.pullPolicy }}
+        command: ["stf"]
+        args:
+        - websocket
+        - --secret
+        - "nosecret"
+        - --port
+        - "3000"
+        - --storage-url
+        - "https://{{ .Values.ingress.hostname }}/"
+        - --connect-sub
+        - "tcp://{{ template "fullname" . }}-triproxy-app:7150"
+        - --connect-push
+        - "tcp://{{ template "fullname" . }}-triproxy-app:7170"
+        env:
+        - name: RETHINKDB_PORT_28015_TCP
+          value: "tcp://{{.Values.db.url}}:{{.Values.db.port}}"
+        - name: RETHINKDB_ENV_AUTHKEY
+          value: "{{.Values.db.password}}"
+        envFrom:
+        - configMapRef:
+            name: "{{ template "fullname" . }}-common-environment-variables"
+        ports:
+        - containerPort: 3000
+        resources:
+{{ toYaml .Values.stf.websocket.resources | indent 10 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-nginx
+spec:
+  replicas: {{ .Values.nginx.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: {{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}
+          imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              name: nginx-conf-volume
+          envFrom:
+          - configMapRef:
+              name: "{{ template "fullname" . }}-common-environment-variables"
+          resources:
+{{ toYaml .Values.nginx.resources | indent 12 }}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
+      volumes:
+        - name: nginx-conf-volume
+          configMap:
+            name: "{{ template "fullname" . }}-nginx-config"
+            items:
+              - key: nginx.conf
+                path: nginx.conf

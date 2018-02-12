@@ -1,0 +1,105 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: {{ template "fullname" . }}-provider-real
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    app: {{ template "fullname" . }}-provider-real
+spec:
+  template:
+    metadata:
+      {{- if .Values.telegraf.config.outputs.prometheus.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9273"
+      {{- end }}
+      labels:
+        app: {{ template "fullname" . }}-provider-real
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        release: "{{ .Release.Name }}"
+        heritage: "{{ .Release.Service }}"
+    spec:
+      containers:
+        - image: "{{ .Values.adb.image.repository }}:{{ .Values.adb.image.tag }}"
+          name: adb-butler
+          imagePullPolicy: {{ .Values.adb.image.pullPolicy }}
+          env:
+          - name: RETHINKDB_URL
+            value: "{{ .Values.db.url }}"
+          - name: RETHINKDB_PORT
+            value: "{{ .Values.db.port }}"
+          - name: RETHINKDB_ENV_AUTHKEY
+            value: "{{ .Values.db.password }}"
+          resources:
+{{ toYaml .Values.adb.resources | indent 12 }}
+          securityContext:
+              privileged: true
+          volumeMounts:
+          - mountPath: /dev
+            name: dev
+          - mountPath: /sys
+            name: sys
+          - mountPath: /custom-metrics
+            name: custom-metrics
+        - name: telegraf
+          image: "{{ .Values.telegraf.image.repo }}:{{ .Values.telegraf.image.tag }}"
+          imagePullPolicy: {{ .Values.telegraf.image.pullPolicy }}
+          env:
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                 fieldPath: status.hostIP
+          resources:
+{{ toYaml .Values.telegraf.resources | indent 12 }}
+          volumeMounts:
+          - name: telegraf-config-volume
+            mountPath: /etc/telegraf
+          - name: custom-metrics
+            mountPath: /custom-metrics
+        - name: stf-provider
+          image: {{ .Values.stf.image.repository }}:{{ .Values.stf.image.tag }}
+          args:
+          - /bin/sh
+          - -c
+          - sleep 10 && stf provider --connect-sub "tcp://{{ template "fullname" . }}-triproxy-dev:7250" --connect-push "tcp://{{ template "fullname" . }}-triproxy-dev:7270" --min-port "15000" --max-port "25000" --heartbeat-interval "10000" --storage-url "https://{{ .Values.ingress.hostname }}/" --screen-ws-url-pattern "wss://{{ .Values.ingress.hostname }}/$(STF_PROVIDER_PUBLIC_IP)/<%= publicPort %>/" --allow-remote --cleanup "false" 2>&1 | tee /var/log/stf/messages
+          env:
+          - name: RETHINKDB_PORT_28015_TCP
+            value: "tcp://{{ .Values.db.url }}:{{ .Values.db.port }}"
+          - name: RETHINKDB_ENV_AUTHKEY
+            value: "{{ .Values.db.password }}"
+          - name: STF_PROVIDER_PUBLIC_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          envFrom:
+          - configMapRef:
+              name: "{{ template "fullname" . }}-common-environment-variables"
+          volumeMounts:
+          - mountPath: /var/log/stf
+            name: logs
+          resources:
+{{ toYaml .Values.provider.real.resources | indent 12 }}
+      nodeSelector:
+        openstf.io/provider: "true"
+      {{- if .Values.androidDevicesTolerations }}
+      tolerations:
+{{ toYaml .Values.androidDevicesTolerations | indent 8 }}
+      {{- end }}
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: "{{ template "fullname" . }}-telegraf-config"
+        name: telegraf-config-volume
+      - name: dev
+        hostPath:
+          path: /dev
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: custom-metrics
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+      imagePullSecrets:
+      - name: {{ .Values.pullSecret }}

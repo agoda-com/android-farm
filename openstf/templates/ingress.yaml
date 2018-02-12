@@ -1,0 +1,27 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "fullname" . }}
+  annotations:
+  {{ if .Values.ingress.annotations }}
+{{ toYaml .Values.ingress.annotations | indent 4 }}
+  {{ else }}
+    nginx.org/websocket-services: "{{ template "fullname" . }}-nginx"
+  {{ end }}
+spec:
+  {{ if .Values.ingress.ssl.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.ingress.hostname }}
+    secretName: {{ .Values.ingress.ssl.secret }}
+  {{ end }}
+  rules:
+  - host: {{ .Values.ingress.hostname }}
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: {{ template "fullname" . }}-nginx
+          servicePort: 80
+{{- end -}}

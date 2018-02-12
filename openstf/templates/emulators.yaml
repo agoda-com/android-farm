@@ -1,0 +1,118 @@
+{{- $root := . -}}
+{{- range $type := .Values.emulators.types }}
+{{- range $emu := .instances }}
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" $root }}-provider-{{ $type.name }}-{{ $emu.version }}
+spec:
+  replicas: {{ $emu.count }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" $root }}-provider-{{ $type.name }}-{{ $emu.version }}
+    spec:
+      containers:
+        - name: adb-butler
+          image: {{ $root.Values.adb.image.repository }}:{{ $root.Values.adb.image.tag }}
+          imagePullPolicy: {{ $root.Values.adb.image.pullPolicy }}
+          resources:
+{{ toYaml $root.Values.adb.resources | indent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/usr/bin/node", "clean.js" ]
+          securityContext:
+              privileged: true
+          env:
+          - name: RETHINKDB_URL
+            value: "{{ $root.Values.db.url }}"
+          - name: RETHINKDB_PORT
+            value: "{{ $root.Values.db.port }}"
+          - name: RETHINKDB_ENV_AUTHKEY
+            value: "{{ $root.Values.db.password }}"
+          - name: STF_PROVIDER_PUBLIC_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: STF_PROVIDER_NOTE
+            value: "{{ $type.note }}"
+          envFrom:
+          - configMapRef:
+              name: "{{ template "fullname" $root }}-common-environment-variables"
+        - name: stf-provider
+          image: {{ $root.Values.stf.image.repository }}:{{ $root.Values.stf.image.tag }}
+          imagePullPolicy: {{ $root.Values.stf.image.pullPolicy }}
+          args:
+          - /bin/sh
+          - -c
+          - sleep 10 && stf provider "$(STF_PROVIDER_PUBLIC_IP):10001" --connect-sub "tcp://{{ template "fullname" $root }}-triproxy-dev:7250" --connect-push "tcp://{{ template "fullname" $root }}-triproxy-dev:7270" --min-port "15000" --max-port "25000" --heartbeat-interval "10000" --storage-url "https://{{ $root.Values.ingress.hostname }}/" --screen-ws-url-pattern "wss://{{ $root.Values.ingress.hostname }}/<%= serial %>/<%= publicPort %>/" --allow-remote --cleanup "false" 2>&1 | tee /var/log/stf/messages
+          env:
+          - name: RETHINKDB_PORT_28015_TCP
+            value: "tcp://{{ $root.Values.db.url }}:{{ $root.Values.db.port }}"
+          - name: RETHINKDB_ENV_AUTHKEY
+            value: "{{ $root.Values.db.password }}"
+          - name: STF_PROVIDER_PUBLIC_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          envFrom:
+          - configMapRef:
+              name: "{{ template "fullname" $root }}-common-environment-variables"
+          livenessProbe:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - grep -q 'spawn adb ENOENT' /var/log/stf/messages && exit 1 || echo 'Everything ok'
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+{{ toYaml $root.Values.provider.emulator.resources | indent 12 }}
+          volumeMounts:
+          - mountPath: /var/log/stf
+            name: logs
+        - name: emulator
+          image: {{ $root.Values.emulators.imagePrefix }}{{ $emu.version }}:{{ $root.Values.emulators.imageVersion }}
+          imagePullPolicy: {{ $root.Values.emulators.pullPolicy }}
+          env:
+            - name: ANDROID_ARCH
+              value: "x86"
+            - name: NAME
+              value: "android-{{ $emu.version }}"
+            - name: CONSOLE_PORT
+              value: "10000"
+            - name: ADB_PORT
+              value: "10001"
+            - name: ADB_SERVER_PORT
+              value: "9999"
+            - name: ANDROID_CONFIG
+              value: "{{ $type.args }}"
+          resources:
+{{ toYaml $root.Values.emulators.resources | indent 12 }}
+          securityContext:
+              privileged: true
+          envFrom:
+          - configMapRef:
+              name: "{{ template "fullname" $root }}-common-environment-variables"
+          volumeMounts:
+          - mountPath: /dev/kvm
+            name: dev-kvm
+      nodeSelector:
+        openstf.io/emulator: "kvm"
+      volumes:
+      - name: stf-adb
+        hostPath:
+          path: /dev/bus/usb
+      - name: dev-kvm
+        hostPath:
+          path: /dev/kvm
+      - name: logs
+        emptyDir: {}
+      imagePullSecrets:
+      - name: {{ $root.Values.pullSecret }}
+---
+{{- end }}
+{{- end }}
