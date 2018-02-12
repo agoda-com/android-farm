@@ -1,5 +1,4 @@
 stf:
-  name: stf
   image:
     repository: openstf/stf
     tag: v3.2.0
@@ -113,7 +112,7 @@ provider:
 db:
   url: rethinkdb-rethinkdb-proxy.openstf
   port: 28015
-  # password: strongpassword
+  password: rethinkdb
 dns:
   resolver: kube-dns.kube-system
 # pullSecret: pullsecret
@@ -121,10 +120,10 @@ ingress:
   enabled: false
   # By default applies proper annotation for nginx ingress
   annotations:
-  hostname: stf.default.svc.cluster.local
+  hostname: openstf.local
   ssl:
     enabled: false
-    # secret: secret-name
+    secret: openstf.local-tls-secret
 androidDevicesTolerations:
 - effect: NoSchedule
   key: openstf.io/provider
@@ -164,60 +163,18 @@ emulators:
       count: 1
     - version: 16
       count: 0
-  - name: phone4i
-    args: ""
-    note: ci/uiTest/emulator
-    instances:
-    - version: 24
-      count: 30
   - name: tablet7i
     note: ci/uiTest/tablet/7inch
     args: "skin.name=600x1024;hw.lcd.density=160;hw.lcd.height=600;hw.lcd.width=1024;hw.device.name=7in WSVGA (Tablet);avd.ini.displayname=7  WSVGA (Tablet) API 23;"
     instances:
-    - version: 26
-      count: 0
     - version: 25
-      count: 10
-    - version: 24
-      count: 0
-    - version: 23
-      count: 0
-    - version: 22
-      count: 0
-    - version: 21
-      count: 0
-    - version: 19
-      count: 0
-    - version: 18
-      count: 0
-    - version: 17
-      count: 0
-    - version: 16
-      count: 0
+      count: 1
   - name: tablet10i
     note: ci/uiTest/tablet/10inch
     args: "skin.name=800x1280;hw.lcd.density=160;hw.lcd.height=800;hw.lcd.width=1280;hw.device.name=10.1in WXGA (Tablet);avd.ini.displayname=10.1  WXGA (Tablet) API 23"
     instances:
-    - version: 26
-      count: 0
     - version: 25
       count: 1
-    - version: 24
-      count: 0
-    - version: 23
-      count: 0
-    - version: 22
-      count: 0
-    - version: 21
-      count: 0
-    - version: 19
-      count: 0
-    - version: 18
-      count: 0
-    - version: 17
-      count: 0
-    - version: 16
-      count: 0
 telegraf:
   image:
     repo: "telegraf"
