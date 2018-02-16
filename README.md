@@ -28,6 +28,14 @@ $ helm install --name my-release openstf
 
 The command deploys OpenSTF on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
 
+You need to set `emulators.imagePrefix` and `adb.image.repository` values to the images of [docker-emulator-android](https://github.com/agoda-com/docker-emulator-android) and [adb-butler](https://github.com/agoda-com/adb-butler) you've built in order for the chart to work. This can be done either in `values.yaml` or via the command-line:
+
+```console
+$ helm install --name my-release \
+    --set emulators.imagePrefix=docker-registry/agoda/docker-emulator-android- \
+    --set adb.image.repository=docker-registry/agoda/adb-butler openstf
+```
+
 > **Tip**: List all releases using `helm list`
 
 ## Uninstalling the Chart
