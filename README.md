@@ -15,6 +15,8 @@ This project contains a chart that bootstraps an OpenSTF deployment on a [Kubern
 - Kubernetes cluster with KVM-capable nodes for emulators
 - [helm](https://helm.sh)
 - [rethinkdb installation](https://github.com/kubernetes/charts/tree/master/stable/rethinkdb)
+- [adb-butler](https://github.com/agoda-com/adb-butler) image
+- [docker-emulator-android](https://github.com/agoda-com/docker-emulator-android) images
 
 ## Installing the Chart
 
@@ -130,6 +132,13 @@ In order to create emulators you need to provide configuration inside `emulators
 
 By default you'll have phones with API versions 17 to 26 and 7' + 10' tablets with API version 25.
 
+# License
+
+android-farm is open source and available under the [Apache License, Version 2.0](LICENSE).
+
+OpenSTF is open source and available under the [Apache License, Version 2.0](https://github.com/openstf/stf/blob/master/LICENSE)
+
+Android SDK components are available under the [Android Software Development Kit License](https://developer.android.com/studio/terms.html)
 
 # Related projects
 
