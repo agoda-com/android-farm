@@ -28,12 +28,20 @@ $ helm install --name my-release openstf
 
 The command deploys OpenSTF on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
 
-You need to set `emulators.imagePrefix` and `adb.image.repository` values to the images of [docker-emulator-android](https://github.com/agoda-com/docker-emulator-android) and [adb-butler](https://github.com/agoda-com/adb-butler) you've built in order for the chart to work. This can be done either in `values.yaml` or via the command-line:
+You need to set `emulators.imagePrefix` and `adb.image.repository` values to the images of [docker-emulator-android](https://github.com/agoda-com/docker-emulator-android) and [adb-butler](https://github.com/agoda-com/adb-butler) you've built in order for the chart to work properly. This can be done either in `values.yaml` or via the command-line. The full installation will look something like:
 
 ```console
-$ helm install --name my-release \
+$ helm install --name openstf -f openstf/values.yaml \
     --set emulators.imagePrefix=docker-registry/agoda/docker-emulator-android- \
-    --set adb.image.repository=docker-registry/agoda/adb-butler openstf
+    --set emulators.imageVersion=1.0.0 \
+    --set adb.image.repository=docker-registry/agoda/adb-butler \
+    --set pullSecret=docker-registry-secret \
+    --set ingress.enabled=true \
+    --set ingress.hostname=openstf.svc.cluster.local \
+    --set ingress.ssl.enabled=true \
+    --set ingress.ssl.secret=ssl-secret \
+    --set rethinkdb.password=strongpassword \
+    openstf
 ```
 
 > **Tip**: List all releases using `helm list`
@@ -107,17 +115,6 @@ Parameter | Description | Default
 `telegraf.image.tag` | telegraf container image repository tag | `1.5-alpine`
 `telegraf.image.pullPolicy` | telegraf container image pullPolicy | `IfNotPresent`
 `telegraf.config.outputs.prometheus.enabled` | provide prometheus metrics on provider pods | `true`
-
-```console
-$ helm install openstf --name my-release \
-    --set rethinkdb.password=strongpassword
-```
-
-Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
-
-```console
-$ helm install openstf --name my-release -f values.yaml
-```
 
 > **Tip**: You can use the default [values.yaml](openstf/values.yaml)
 
