@@ -156,6 +156,99 @@ data:
     [[inputs.exec]]
       commands = ["cat /custom-metrics/devices"]
       data_format = "influx"
+    [[inputs.exec]]
+      commands = ["cat /custom-metrics/battery"]
+      data_format = "influx"
+    {{- if .Values.telegraf.config.outputs.graphite.enabled }}
+    [[outputs.graphite]]
+      servers = [{{ .Values.telegraf.config.outputs.graphite.server | quote }}]
+      prefix = {{ .Values.telegraf.config.outputs.graphite.prefix | quote }}
+      template = {{ .Values.telegraf.config.outputs.graphite.template | quote }}
+      timeout = {{ .Values.telegraf.config.outputs.graphite.timeout }}
+    {{- end }}
+    {{- if .Values.telegraf.config.outputs.prometheus.enabled }}
+    [[outputs.prometheus_client]]
+      listen = ":9273"
+      expiration_interval = "60s"
+      collectors_exclude = ["gocollector", "process"]
+    {{- end }}
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ template "fullname" . }}-telegraf-openstf-config"
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+data:
+  crontab: |+
+    * * * * * /bin/bash /scripts/metrics.sh > /custom-metrics/openstf
+  metrics.sh: |+
+    #!/usr/bin/env bash
+
+    json_filter="openstf"
+
+    declare -A metrics
+    metrics['abi']=''
+    metrics['battery.health']=''
+    metrics['manufacturer']='string'
+    metrics['model']='string'
+    metrics['network.connected']='boolean'
+    metrics['network.type']=''
+    metrics['notes']='string'
+    metrics['phone.imei']='string'
+    metrics['present']='boolean'
+    metrics['product']='string'
+    metrics['ready']='boolean'
+    metrics['remoteConnect']='boolean'
+    metrics['serial']='string'
+    metrics['sdk']='int'
+    metrics['version']='string'
+    metrics['using']='boolean'
+
+    for metric in "${!metrics[@]}"
+    do
+      type="${metrics[$metric]}"
+      metric_tag=$(echo "$metric" | sed -r 's/\./-/g')
+      case $type in
+      string)
+        json_filter="$json_filter,${metric_tag,,}=\\\"\(.$metric)\\\""
+        ;;
+      *)
+        json_filter="$json_filter,${metric_tag,,}=\(.$metric)"
+        ;;
+      esac
+    done
+
+    q=".devices[] | \"$json_filter status=\(.status)\""
+
+    curl -s -H "Authorization: Bearer $STF_TOKEN" $STF_URL | jq -r "$q" > /tmp/stf.json
+
+    while read line; do
+      echo $line | rev | sed -r 's/ / \\/2g' | rev | awk '{print $0, systime()}'
+    done < /tmp/stf.json
+  telegraf.conf: |+
+    {{- if .Values.telegraf.config.global_tags }}
+    [global_tags]
+      {{- range $key, $val := .Values.telegraf.config.global_tags }}
+      {{ $key }} = {{ $val | quote }}
+      {{- end }}
+    {{- end }}
+    [agent]
+      interval = {{ .Values.telegraf.config.agent.interval | quote }}
+      round_interval = {{ .Values.telegraf.config.agent.round_interval }}
+      metric_buffer_limit = {{ .Values.telegraf.config.agent.metric_buffer_limit }}
+      collection_jitter = {{ .Values.telegraf.config.agent.collection_jitter | quote }}
+      flush_interval = {{ .Values.telegraf.config.agent.flush_interval | quote }}
+      flush_jitter = {{ .Values.telegraf.config.agent.flush_jitter | quote }}
+      precision = ""
+      debug = true
+      quiet = false
+      logfile = ""
+      omit_hostname = true
+    [[inputs.exec]]
+      commands = ["cat /custom-metrics/openstf"]
+      data_format = "influx"
     {{- if .Values.telegraf.config.outputs.graphite.enabled }}
     [[outputs.graphite]]
       servers = [{{ .Values.telegraf.config.outputs.graphite.server | quote }}]

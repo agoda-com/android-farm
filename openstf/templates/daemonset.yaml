@@ -42,7 +42,7 @@ spec:
           - mountPath: /custom-metrics
             name: custom-metrics
         - name: telegraf
-          image: "{{ .Values.telegraf.image.repo }}:{{ .Values.telegraf.image.tag }}"
+          image: "{{ .Values.telegraf.image.repository }}:{{ .Values.telegraf.image.tag }}"
           imagePullPolicy: {{ .Values.telegraf.image.pullPolicy }}
           env:
           - name: HOST_IP

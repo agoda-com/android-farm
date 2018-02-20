@@ -443,3 +443,71 @@ spec:
             items:
               - key: nginx.conf
                 path: nginx.conf
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-telegraf
+spec:
+  replicas: 1
+  template:
+    metadata:
+      {{- if .Values.telegraf.config.outputs.prometheus.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9273"
+      {{- end }}
+      labels:
+        app: {{ template "fullname" . }}-telegraf
+    spec:
+      containers:
+        - name: metrics
+          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
+          env:
+          - name: STF_URL
+            value: http://{{ template "fullname" . }}-api:3700/api/v1/devices
+          - name: STF_TOKEN
+            value: "{{ .Values.metrics.token }}"
+          resources:
+{{ toYaml .Values.metrics.resources | indent 12 }}
+          volumeMounts:
+          - name: cron-config
+            mountPath: /var/spool/cron/crontabs/
+          - name: metrics-script
+            mountPath: /scripts
+          - name: custom-metrics
+            mountPath: /custom-metrics
+        - name: telegraf
+          image: "{{ .Values.telegraf.image.repository }}:{{ .Values.telegraf.image.tag }}"
+          resources:
+{{ toYaml .Values.telegraf.resources | indent 12 }}
+          volumeMounts:
+          - name: telegraf-config-volume
+            mountPath: /etc/telegraf
+          - name: custom-metrics
+            mountPath: /custom-metrics
+      volumes:
+      - name: telegraf-config-volume
+        configMap:
+          defaultMode: 420
+          name: "{{ template "fullname" . }}-telegraf-openstf-config"
+          items:
+            - key: telegraf.conf
+              path: telegraf.conf
+      - name: cron-config
+        configMap:
+          name: "{{ template "fullname" . }}-telegraf-openstf-config"
+          items:
+            - key: crontab
+              path: root
+      - name: metrics-script
+        configMap:
+          name: "{{ template "fullname" . }}-telegraf-openstf-config"
+          items:
+            - key: metrics.sh
+              path: metrics.sh
+      - name: custom-metrics
+        emptyDir: {}
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret }}
