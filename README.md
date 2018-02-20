@@ -15,6 +15,8 @@ This project contains a chart that bootstraps an OpenSTF deployment on a [Kubern
 - Kubernetes cluster with KVM-capable nodes for emulators
 - [helm](https://helm.sh)
 - [rethinkdb installation](https://github.com/kubernetes/charts/tree/master/stable/rethinkdb)
+- [adb-butler](https://github.com/agoda-com/adb-butler) image
+- [docker-emulator-android](https://github.com/agoda-com/docker-emulator-android) images
 
 ## Installing the Chart
 
@@ -25,6 +27,22 @@ $ helm install --name my-release openstf
 ```
 
 The command deploys OpenSTF on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
+
+You need to set `emulators.imagePrefix` and `adb.image.repository` values to the images of [docker-emulator-android](https://github.com/agoda-com/docker-emulator-android) and [adb-butler](https://github.com/agoda-com/adb-butler) you've built in order for the chart to work properly. This can be done either in `values.yaml` or via the command-line. The full installation will look something like:
+
+```console
+$ helm install --name openstf -f openstf/values.yaml \
+    --set emulators.imagePrefix=docker-registry/agoda/docker-emulator-android- \
+    --set emulators.imageVersion=1.0.0 \
+    --set adb.image.repository=docker-registry/agoda/adb-butler \
+    --set pullSecret=docker-registry-secret \
+    --set ingress.enabled=true \
+    --set ingress.hostname=openstf.svc.cluster.local \
+    --set ingress.ssl.enabled=true \
+    --set ingress.ssl.secret=ssl-secret \
+    --set rethinkdb.password=strongpassword \
+    openstf
+```
 
 > **Tip**: List all releases using `helm list`
 
@@ -98,17 +116,6 @@ Parameter | Description | Default
 `telegraf.image.pullPolicy` | telegraf container image pullPolicy | `IfNotPresent`
 `telegraf.config.outputs.prometheus.enabled` | provide prometheus metrics on provider pods | `true`
 
-```console
-$ helm install openstf --name my-release \
-    --set rethinkdb.password=strongpassword
-```
-
-Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
-
-```console
-$ helm install openstf --name my-release -f values.yaml
-```
-
 > **Tip**: You can use the default [values.yaml](openstf/values.yaml)
 
 ## Pod resources
@@ -130,6 +137,13 @@ In order to create emulators you need to provide configuration inside `emulators
 
 By default you'll have phones with API versions 17 to 26 and 7' + 10' tablets with API version 25.
 
+# License
+
+android-farm is open source and available under the [Apache License, Version 2.0](LICENSE).
+
+OpenSTF is open source and available under the [Apache License, Version 2.0](https://github.com/openstf/stf/blob/master/LICENSE)
+
+Android SDK components are available under the [Android Software Development Kit License](https://developer.android.com/studio/terms.html)
 
 # Related projects
 
