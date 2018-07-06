@@ -11,6 +11,7 @@ metadata:
     "helm.sh/hook-weight": "-5"
     "helm.sh/hook-delete-policy": hook-succeeded
 spec:
+  activeDeadlineSeconds: 300
   template:
     metadata:
       name: {{.Release.Name}}
