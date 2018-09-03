@@ -106,9 +106,10 @@ provider:
         cpu: 2
         memory: 4096Mi
   emulator:
-    limits:
-      cpu: 500m
-      memory: 512Mi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
 db:
   url: rethinkdb-rethinkdb-proxy.openstf
   port: 28015
