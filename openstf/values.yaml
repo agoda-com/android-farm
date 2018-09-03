@@ -125,7 +125,7 @@ metrics:
   # OpenSTF API token
   token:
 dns:
-  resolver: kube-dns.kube-system
+  resolver: coredns.kube-system
 # pullSecret: pullsecret
 ingress:
   enabled: false
