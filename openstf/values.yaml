@@ -101,6 +101,9 @@ adb:
       memory: 512Mi
 provider:
   real:
+    tethering:
+      enabled: false
+      dns: 8.8.8.8
     resources:
       limits:
         cpu: 2

@@ -30,6 +30,10 @@ spec:
             value: "{{ .Values.db.port }}"
           - name: RETHINKDB_ENV_AUTHKEY
             value: "{{ .Values.db.password }}"
+          - name: GNIREHTET_ENABLED
+            value: "{{ .Values.provider.real.tethering.enabled }}"
+          - name: DNS_SERVER
+            value: "{{ .Values.provider.real.tethering.dns }}"
           resources:
 {{ toYaml .Values.adb.resources | indent 12 }}
           securityContext:
