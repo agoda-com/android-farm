@@ -99,6 +99,7 @@ adb:
     limits:
       cpu: 1
       memory: 2Gi
+provider:
   real:
     tethering:
       enabled: false
