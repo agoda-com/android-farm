@@ -25,31 +25,31 @@ data:
       default_type        application/octet-stream;
 
       upstream stf_app {
-        server {{ template "fullname" . }}-app:3100 max_fails=0;
+        server {{ template "fullname" . }}-app:3100 max_fails=3;
       }
 
       upstream stf_auth {
-        server {{ template "fullname" . }}-auth:3200 max_fails=0;
+        server {{ template "fullname" . }}-auth:3200 max_fails=3;
       }
 
       upstream stf_storage_apk {
-        server {{ template "fullname" . }}-apk-storage:3300 max_fails=0;
+        server {{ template "fullname" . }}-apk-storage:3300 max_fails=3;
       }
 
       upstream stf_storage_image {
-        server {{ template "fullname" . }}-img-storage:3400 max_fails=0;
+        server {{ template "fullname" . }}-img-storage:3400 max_fails=3;
       }
 
       upstream stf_storage {
-        server {{ template "fullname" . }}-storage:3500 max_fails=0;
+        server {{ template "fullname" . }}-storage:3500 max_fails=3;
       }
 
       upstream stf_websocket {
-        server {{ template "fullname" . }}-websocket:3600 max_fails=0;
+        server {{ template "fullname" . }}-websocket:3600 max_fails=3;
       }
 
       upstream stf_api {
-        server {{ template "fullname" . }}-api:3700 max_fails=0;
+        server {{ template "fullname" . }}-api:3700 max_fails=3;
       }
 
       types {

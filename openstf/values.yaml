@@ -79,7 +79,7 @@ nginx:
     repository: nginx
     tag: 1.13.8-alpine
     pullPolicy: IfNotPresent
-  replicas: 1
+  replicas: 2
   resources:
     requests:
       cpu: 500m
@@ -109,6 +109,13 @@ provider:
         cpu: 2
         memory: 4096Mi
   emulator:
+    readinessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      failureThreshold: 2
+    livenessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 10
     resources:
       limits:
         cpu: 500m
