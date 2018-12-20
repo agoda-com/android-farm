@@ -45,23 +45,6 @@ spec:
           envFrom:
           - configMapRef:
               name: "{{ template "fullname" $root }}-common-environment-variables"
-          livenessProbe:
-            exec:
-              command:
-              - "/bin/sh"
-              - "-c"
-              - echo $(timeout -t 10 adb -s emulator-10000 shell getprop sys.boot_completed) | grep -q '1'
-            initialDelaySeconds: {{ $root.Values.provider.emulator.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ $root.Values.provider.emulator.livenessProbe.periodSeconds }}
-          readinessProbe:
-            exec:
-              command:
-              - "/bin/sh"
-              - "-c"
-              - echo $(timeout -t 10 adb -s emulator-10000 shell getprop sys.boot_completed) | grep -q '1'
-            initialDelaySeconds: {{ $root.Values.provider.emulator.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ $root.Values.provider.emulator.readinessProbe.periodSeconds }}
-            failureThreshold: {{ $root.Values.provider.emulator.readinessProbe.failureThreshold }}
         - name: stf-provider
           image: {{ $root.Values.stf.image.repository }}:{{ $root.Values.stf.image.tag }}
           imagePullPolicy: {{ $root.Values.stf.image.pullPolicy }}
@@ -118,6 +101,23 @@ spec:
           envFrom:
           - configMapRef:
               name: "{{ template "fullname" $root }}-common-environment-variables"
+          livenessProbe:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - echo $(timeout 10s _adb -s emulator-10000 shell getprop sys.boot_completed) | grep -q '1'
+            initialDelaySeconds: {{ $root.Values.provider.emulator.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $root.Values.provider.emulator.livenessProbe.periodSeconds }}
+          readinessProbe:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - echo $(timeout 10s _adb -s emulator-10000 shell getprop sys.boot_completed) | grep -q '1'
+            initialDelaySeconds: {{ $root.Values.provider.emulator.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $root.Values.provider.emulator.readinessProbe.periodSeconds }}
+            failureThreshold: {{ $root.Values.provider.emulator.readinessProbe.failureThreshold }}
           volumeMounts:
           - mountPath: /dev/kvm
             name: dev-kvm
