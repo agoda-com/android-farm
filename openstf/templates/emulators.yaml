@@ -16,6 +16,7 @@ spec:
       labels:
         app: {{ template "fullname" $root }}-provider-{{ $type.name }}-{{ $emu.version }}
     spec:
+      shareProcessNamespace: true
       containers:
         - name: adb-butler
           image: {{ $root.Values.adb.image.repository }}:{{ $root.Values.adb.image.tag }}
@@ -45,6 +46,23 @@ spec:
           envFrom:
           - configMapRef:
               name: "{{ template "fullname" $root }}-common-environment-variables"
+          livenessProbe:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - echo $(timeout -t 10 adb -s emulator-10000 shell getprop sys.boot_completed) | grep -q '1'
+            initialDelaySeconds: {{ $root.Values.provider.emulator.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $root.Values.provider.emulator.livenessProbe.periodSeconds }}
+          readinessProbe:
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - echo $(timeout -t 10 adb -s emulator-10000 shell getprop sys.boot_completed) | grep -q '1'
+            initialDelaySeconds: {{ $root.Values.provider.emulator.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $root.Values.provider.emulator.readinessProbe.periodSeconds }}
+            failureThreshold: {{ $root.Values.provider.emulator.readinessProbe.failureThreshold }}
         - name: stf-provider
           image: {{ $root.Values.stf.image.repository }}:{{ $root.Values.stf.image.tag }}
           imagePullPolicy: {{ $root.Values.stf.image.pullPolicy }}
