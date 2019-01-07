@@ -55,7 +55,7 @@ spec:
               command:
               - "/bin/sh"
               - "-c"
-              - echo -n | adb devices | egrep 'device$' | awk '{ print $1 }' | while read d; do echo -n | timeout -t 10 adb -s $d shell getprop sys.boot_completed; done | egrep '^1$' | wc -l | egrep -q '^2$'
+              - echo -n | adb devices | egrep 'device$' | awk '{ print $1 }' | while read d; do echo -n | timeout -t 10 adb -s $d shell getprop sys.boot_completed; done | egrep '^\s*1\s*$' | wc -l | egrep -q '^2$'
             initialDelaySeconds: {{ $root.Values.provider.emulator.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ $root.Values.provider.emulator.livenessProbe.periodSeconds }}
           readinessProbe:
@@ -63,7 +63,7 @@ spec:
               command:
               - "/bin/sh"
               - "-c"
-              - echo -n | adb devices | egrep 'device$' | awk '{ print $1 }' | while read d; do echo -n | timeout -t 10 adb -s $d shell getprop sys.boot_completed; done | egrep '^1$' | wc -l | egrep -q '^2$'
+              - echo -n | adb devices | egrep 'device$' | awk '{ print $1 }' | while read d; do echo -n | timeout -t 10 adb -s $d shell getprop sys.boot_completed; done | egrep '^\s*1\s*$' | wc -l | egrep -q '^2$'
             initialDelaySeconds: {{ $root.Values.provider.emulator.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ $root.Values.provider.emulator.readinessProbe.periodSeconds }}
             failureThreshold: {{ $root.Values.provider.emulator.readinessProbe.failureThreshold }}
