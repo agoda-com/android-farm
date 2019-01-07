@@ -36,6 +36,10 @@ spec:
             value: "{{ $root.Values.db.port }}"
           - name: RETHINKDB_ENV_AUTHKEY
             value: "{{ $root.Values.db.password }}"
+          {{ if $type.timezone }}
+          - name: EMULATOR_TIMEZONE
+            value: "{{ $type.timezone }}"
+          {{ end }}
           - name: STF_PROVIDER_PUBLIC_IP
             valueFrom:
               fieldRef:

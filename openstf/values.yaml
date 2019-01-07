@@ -164,6 +164,7 @@ emulators:
   - name: phone
     args: ""
     note: ci/uiTest/phone
+    timezone: "Etc/UTC"
     instances:
     - version: 26
       count: 1
@@ -188,12 +189,14 @@ emulators:
   - name: tablet7i
     note: ci/uiTest/tablet/7inch
     args: "skin.name=600x1024;hw.lcd.density=160;hw.lcd.height=600;hw.lcd.width=1024;hw.device.name=7in WSVGA (Tablet);avd.ini.displayname=7  WSVGA (Tablet) API 23;"
+    timezone: "Etc/UTC"
     instances:
     - version: 25
       count: 1
   - name: tablet10i
     note: ci/uiTest/tablet/10inch
     args: "skin.name=800x1280;hw.lcd.density=160;hw.lcd.height=800;hw.lcd.width=1280;hw.device.name=10.1in WXGA (Tablet);avd.ini.displayname=10.1  WXGA (Tablet) API 23"
+    timezone: "Etc/UTC"
     instances:
     - version: 25
       count: 1
