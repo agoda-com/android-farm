@@ -141,7 +141,7 @@ dns:
 ingress:
   enabled: false
   # By default applies proper annotation for nginx ingress
-  annotations:
+  annotations: {}
   hostname: openstf.local
   ssl:
     enabled: false
